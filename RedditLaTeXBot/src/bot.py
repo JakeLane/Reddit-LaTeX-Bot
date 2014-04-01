@@ -17,8 +17,10 @@ import urllib
 
 
 def main():
+    # Start the logger
     initialize_logger('log')
-    if not os.path.exists('config'):
+    # Do not launch if no configuration
+    if not os.path.exists('config.cfg'):
         logging.error('No config file.')
         sys.exit()
     logging.info('Reddit LaTeX Bot v1 by /u/LeManyman has started')
@@ -39,35 +41,51 @@ def main():
     logging.info('Bot has successfully logged in')
     
     # Generate the multireddit
-    multireddit = ('%s') % '+'.join(subreddits)
-    logging.info('Bot will be scanning the multireddit "' + multireddit + '".')
+    if str(subreddits[0]) != 'all':
+        multireddit = ('%s') % '+'.join(subreddits)
+        logging.info('Bot will be scanning the multireddit "' + multireddit + '".')
+    else:
+        all_comments = praw.helpers.comment_stream(r, 'all', limit=None)
+        logging.info('Bot will be scanning all of reddit.')
     
-    regex = re.compile('\[(.*)\]\(\/latex\)')
+    # Define the regex
+    regex = re.compile('\[(.*\n*)\]\(\/latex\)')
+    
+    # Start the main loop
     while True:
-        subs = r.get_subreddit(multireddit)
-        multi_reddits_comments = subs.get_comments()
-        # Load already done from file
-        already_done = set()
-        for comment in multi_reddits_comments:
-            latex = regex.findall(comment.body)
-            if latex != [] and comment.id not in already_done:
-                comment_with_replies = r.get_submission(comment.permalink).comments[0]
-                for reply in comment_with_replies.replies:
-                    if reply.author.name == username:
+        try:
+            if str(subreddits[0]) != 'all':
+                subs = r.get_subreddit(multireddit)
+                all_comments = subs.get_comments()
+            
+            # Load already done
+            already_done = set()
+            for comment in all_comments:
+                latex = regex.findall(comment.body)
+                if latex != [] and comment.id not in already_done:
+                    logging.info('Found comment with LaTeX')
+                    comment_with_replies = r.get_submission(comment.permalink).comments[0]
+                    for reply in comment_with_replies.replies:
+                        if reply.author.name == username:
+                            already_done.add(comment.id)
+                            logging.info('Comment was already done.')
+                    if comment.id not in already_done:
+                        comment_reply = ''
+                        for formula in latex:
+                            url = formula_as_url(formula)
+                            uploaded_image = imgur_upload(url)
+                            final_link = uploaded_image.link
+                            comment_reply = comment_reply + '[Automatically Generated Formula](' + final_link + ')\n\n ' 
+                        
+                        comment_reply = comment_reply + '***\n\n^[About](https://bitbucket.org/JakeLane/reddit-latex-bot/wiki/Home) ^| ^[Source](https://bitbucket.org/JakeLane/reddit-latex-bot/src) ^| ^Created ^and ^maintained ^by ^/u/LeManyman'
+                        comment.reply(comment_reply)
                         already_done.add(comment.id)
-                if comment.id not in already_done:
-                    comment_reply = ''
-                    for formula in latex:
-                        url = formula_as_url(formula)
-                        uploaded_image = imgur_upload(url)
-                        final_link = uploaded_image.link
-                        comment_reply = comment_reply + '[Automatically Generated Formula](' + final_link + ')\n\n ' 
-                    
-                    comment_reply = comment_reply + '***\n\n^[About](https://bitbucket.org/JakeLane/reddit-latex-bot/wiki/Home) ^| ^[Source](https://bitbucket.org/JakeLane/reddit-latex-bot/src) ^| ^Created ^and ^maintained ^by ^/u/LeManyman'
-                    comment.reply(comment_reply)
-                    already_done.add(comment.id)
-            sleep(5)
-
+                        logging.info('Successfully posted image. ')
+        except Exception as e:
+            logging.error(e)
+            sleep(60)
+            continue
+            
 def configuration():
     config = ConfigParser.ConfigParser()
     config.read('config.cfg')
@@ -81,7 +99,7 @@ def initialize_logger(output_dir):
         open(output_dir + '/all.log', 'w+').close()
     
     logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
      
     # create console handler and set level to info
     handler = logging.StreamHandler()
