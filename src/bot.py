@@ -26,7 +26,7 @@ def main():
     global Imgur_CLIENT_SECRET
     Imgur_CLIENT_ID = os.environ.get('imgur_client_id')
     Imgur_CLIENT_SECRET = os.environ.get('imgur_client_secret')
-    subreddits = os.environ.get('reddit_subreddits')
+    subreddits = os.environ.get('reddit_subreddits').split(',')
 
     logging.info('Reddit LaTeX Bot v1 by /u/LeManyman has started')
     
