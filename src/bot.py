@@ -18,12 +18,7 @@ import urllib
 def main():
     # Start the logger
     initialize_logger('log')
-    # Do not launch if no configuration
-    if not os.path.exists('config.cfg'):
-        logging.error('No config file.')
-        sys.exit()
-    logging.info('Reddit LaTeX Bot v1 by /u/LeManyman has started')
-    
+
     # Parse the configuration
     username = os.environ.get('reddit_username')
     password = os.environ.get('reddit_password')
@@ -32,6 +27,8 @@ def main():
     Imgur_CLIENT_ID = os.environ.get('imgur_client_id')
     Imgur_CLIENT_SECRET = os.environ.get('imgur_client_secret')
     subreddits = os.environ.get('reddit_subreddits')
+
+    logging.info('Reddit LaTeX Bot v1 by /u/LeManyman has started')
     
     # Initiate things
     global banned_subs
