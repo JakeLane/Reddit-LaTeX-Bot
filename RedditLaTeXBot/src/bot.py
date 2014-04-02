@@ -5,7 +5,6 @@ A bot that converts commented LaTeX into an image.
 @author: Jake Lane
 '''
 
-import ConfigParser
 import logging
 import os
 from os.path import sys
@@ -24,19 +23,24 @@ def main():
         logging.error('No config file.')
         sys.exit()
     logging.info('Reddit LaTeX Bot v1 by /u/LeManyman has started')
+    
     # Parse the configuration
-    config = configuration()
-    username = config.get('Configuration', 'Username')
-    password = config.get('Configuration', 'Password')
+    username = os.environ.get('reddit_username')
+    password = os.environ.get('reddit_password')
     global Imgur_CLIENT_ID
     global Imgur_CLIENT_SECRET
-    Imgur_CLIENT_ID = config.get('Configuration', 'Imgur Client ID')
-    Imgur_CLIENT_SECRET = config.get('Configuration', 'Imgur Secret ID')
-    subreddits = config.get('Configuration', 'Subreddits').split(',')
+    Imgur_CLIENT_ID = os.environ.get('imgur_client_id')
+    Imgur_CLIENT_SECRET = os.environ.get('imgur_client_secret')
+    subreddits = os.environ.get('reddit_subreddits')
+    
+    # Initiate things
+    global banned_subs
+    banned_subs = []
     
     # Login to Reddit
     r = praw.Reddit('LaTeX Bot by u/JakeLane'
                     'Url: https://bitbucket.org/JakeLane/reddit-latex-bot')
+    r.config.decode_html_entities = True
     r.login(username, password)
     logging.info('Bot has successfully logged in')
     
@@ -61,9 +65,13 @@ def main():
             # Load already done
             already_done = set()
             for comment in all_comments:
+                if is_banned(r, comment.submission.subreddit.display_name):
+                    pass
                 latex = regex.findall(comment.body)
                 if latex != [] and comment.id not in already_done:
+                    
                     logging.info('Found comment with LaTeX')
+                    
                     comment_with_replies = r.get_submission(comment.permalink).comments[0]
                     for reply in comment_with_replies.replies:
                         if reply.author.name == username:
@@ -85,11 +93,6 @@ def main():
             logging.error(e)
             sleep(60)
             continue
-            
-def configuration():
-    config = ConfigParser.ConfigParser()
-    config.read('config.cfg')
-    return config
 
 def initialize_logger(output_dir):
     if not os.path.exists(output_dir):
@@ -130,6 +133,14 @@ def formula_as_url(formula):
     encoded = urllib.quote('\dpi{120} %s' % formula)
     joined_url = 'http://latex.codecogs.com/png.latex?' + encoded
     return joined_url
+
+def is_banned(r, sub_name):
+    # Checks if our account is banned on a subreddit
+    if r.get_subreddit(sub_name).user_is_banned:
+        if not sub_name in banned_subs:
+            banned_subs.append(sub_name)
+        return True
+    return False
 
 if __name__ == '__main__':
     main()
