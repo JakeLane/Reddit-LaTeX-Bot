@@ -21,12 +21,27 @@ def main():
 
     # Parse the configuration
     username = os.environ.get('reddit_username')
+    if username == None:
+	logging.error('Could not load username')
+	enviroment_fail = True
     password = os.environ.get('reddit_password')
+    if password == None:
+	logging.error('Could not load password')
+	enviroment_fail = True
     global Imgur_CLIENT_ID
     global Imgur_CLIENT_SECRET
     Imgur_CLIENT_ID = os.environ.get('imgur_client_id')
+    if Imgur_CLIENT_ID == None:
+	logging.error('Could not load Client_ID')
+	enviroment_fail = True
     Imgur_CLIENT_SECRET = os.environ.get('imgur_client_secret')
+    if Imgur_CLIENT_SECRET == None:
+	logging.error('Could not load SECRET_ID')
+	enviroment_fail = True
     subreddits = os.environ.get('reddit_subreddits').split(',')
+    if subreddits == None:
+	logging.error('Could not load subreddits')
+	enviroment_fail = True
 
     logging.info('Reddit LaTeX Bot v1 by /u/LeManyman has started')
     
@@ -52,6 +67,9 @@ def main():
     # Define the regex
     regex = re.compile('\[(.*\n*)\]\(\/latex\)')
     
+    # Load already done
+    already_done = set()
+    
     # Start the main loop
     while True:
         try:
@@ -59,11 +77,7 @@ def main():
                 subs = r.get_subreddit(multireddit)
                 all_comments = subs.get_comments()
             
-            # Load already done
-            already_done = set()
             for comment in all_comments:
-                if is_banned(r, comment.submission.subreddit.display_name):
-                    pass
                 latex = regex.findall(comment.body)
                 if latex != [] and comment.id not in already_done:
                     
@@ -88,7 +102,6 @@ def main():
                         logging.info('Successfully posted image. ')
         except Exception as e:
             logging.error(e)
-            sleep(60)
             continue
 
 def initialize_logger(output_dir):
