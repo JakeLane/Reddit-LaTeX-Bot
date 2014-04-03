@@ -4,7 +4,7 @@ A bot that converts commented LaTeX into an image.
 
 @author: Jake Lane
 '''
-
+from threading import Thread
 import logging
 import os
 from os.path import sys
@@ -20,30 +20,40 @@ def main():
     initialize_logger('log')
 
     # Parse the configuration
+    enviroment_fail = False
+    
     username = os.environ.get('reddit_username')
     if username == None:
-	logging.error('Could not load username')
-	enviroment_fail = True
+    	logging.error('Could not load username')
+    	enviroment_fail = True
+        
     password = os.environ.get('reddit_password')
     if password == None:
-	logging.error('Could not load password')
-	enviroment_fail = True
+    	logging.error('Could not load password')
+    	enviroment_fail = True
+        
     global Imgur_CLIENT_ID
-    global Imgur_CLIENT_SECRET
     Imgur_CLIENT_ID = os.environ.get('imgur_client_id')
     if Imgur_CLIENT_ID == None:
-	logging.error('Could not load Client_ID')
-	enviroment_fail = True
+    	logging.error('Could not load Client_ID')
+    	enviroment_fail = True
+        
+    global Imgur_CLIENT_SECRET
     Imgur_CLIENT_SECRET = os.environ.get('imgur_client_secret')
     if Imgur_CLIENT_SECRET == None:
-	logging.error('Could not load SECRET_ID')
-	enviroment_fail = True
+    	logging.error('Could not load SECRET_ID')
+    	enviroment_fail = True
+    
     subreddits = os.environ.get('reddit_subreddits').split(',')
     if subreddits == None:
-	logging.error('Could not load subreddits')
-	enviroment_fail = True
-
-    logging.info('Reddit LaTeX Bot v1 by /u/LeManyman has started')
+    	logging.error('Could not load subreddits')
+    	enviroment_fail = True
+        
+    if not enviroment_fail:
+        logging.info('Reddit LaTeX Bot v1 by /u/LeManyman has started')
+    else:
+        logging.error('Could not start bot.')
+        sys.exit(0)
     
     # Initiate things
     global banned_subs
@@ -65,11 +75,10 @@ def main():
         logging.info('Bot will be scanning all of reddit.')
     
     # Define the regex
-    regex = re.compile('\[(.*\n*)\]\(\/latex\)')
+    regex_old = re.compile('\[(.*\n*)\]\(\/latex\)')
+    regex = re.compile(r'\\begin{latex}(.*\n*)\\end{latex}', re.S)
     
-    # Load already done
     already_done = set()
-    
     # Start the main loop
     while True:
         try:
@@ -78,31 +87,38 @@ def main():
                 all_comments = subs.get_comments()
             
             for comment in all_comments:
-                latex = regex.findall(comment.body)
+                latex = []
+                latex.extend(regex_old.findall(comment.body))
+                latex.extend(regex.findall(comment.body))
                 if latex != [] and comment.id not in already_done:
-                    
                     logging.info('Found comment with LaTeX')
-                    
-                    comment_with_replies = r.get_submission(comment.permalink).comments[0]
-                    for reply in comment_with_replies.replies:
-                        if reply.author.name == username:
-                            already_done.add(comment.id)
-                            logging.info('Comment was already done.')
-                    if comment.id not in already_done:
-                        comment_reply = ''
-                        for formula in latex:
-                            url = formula_as_url(formula)
-                            uploaded_image = imgur_upload(url)
-                            final_link = uploaded_image.link
-                            comment_reply = comment_reply + '[Automatically Generated Formula](' + final_link + ')\n\n ' 
-                        
-                        comment_reply = comment_reply + '***\n\n^[About](https://bitbucket.org/JakeLane/reddit-latex-bot/wiki/Home) ^| ^[Source](https://bitbucket.org/JakeLane/reddit-latex-bot/src) ^| ^Created ^and ^maintained ^by ^/u/LeManyman'
-                        comment.reply(comment_reply)
-                        already_done.add(comment.id)
-                        logging.info('Successfully posted image. ')
+                    thread = Thread(target=generate_comment, args=(r, comment, username, already_done, latex, ))
+                    thread.start()
+
         except Exception as e:
             logging.error(e)
             continue
+
+def generate_comment(r, comment, username, already_done, latex):
+    comment_with_replies = r.get_submission(comment.permalink).comments[0]
+    for reply in comment_with_replies.replies:
+        if reply.author.name == username:
+            already_done.add(comment.id)
+            logging.info('Comment was already done.')
+    if comment.id not in already_done:
+        comment_reply = ''
+        for formula in latex:
+            encoded = urllib.quote('%s' % formula)
+            url = 'http://latex.codecogs.com/png.latex?' + encoded
+            uploaded_image = imgur_upload(url)
+            final_link = uploaded_image.link
+            comment_reply = comment_reply + '[Automatically Generated Formula](' + final_link + ')\n\n '
+            logging.info('Generated image')
+        
+        comment_reply = comment_reply + '***\n\n^[About](https://bitbucket.org/JakeLane/reddit-latex-bot/wiki/Home) ^| ^[Source](https://bitbucket.org/JakeLane/reddit-latex-bot/src) ^| ^Created ^and ^maintained ^by ^/u/LeManyman'
+        comment.reply(comment_reply)
+        already_done.add(comment.id)
+        logging.info('Successfully posted image. ')
 
 def initialize_logger(output_dir):
     if not os.path.exists(output_dir):
@@ -140,17 +156,9 @@ def imgur_upload(formula_url):
     return im.upload_image(url=formula_url)
 
 def formula_as_url(formula):
-    encoded = urllib.quote('\dpi{120} %s' % formula)
+    encoded = urllib.quote('%s' % formula)
     joined_url = 'http://latex.codecogs.com/png.latex?' + encoded
     return joined_url
-
-def is_banned(r, sub_name):
-    # Checks if our account is banned on a subreddit
-    if r.get_subreddit(sub_name).user_is_banned:
-        if not sub_name in banned_subs:
-            banned_subs.append(sub_name)
-        return True
-    return False
 
 if __name__ == '__main__':
     main()
