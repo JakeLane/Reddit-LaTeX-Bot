@@ -66,35 +66,38 @@ def main():
     r.login(username, password)
     logging.info('Bot has successfully logged in')
     
-    # Generate the multireddit
-    if str(subreddits[0]) != 'all':
-        multireddit = ('%s') % '+'.join(subreddits)
-        logging.info('Bot will be scanning the multireddit "' + multireddit + '".')
-    else:
-        all_comments = praw.helpers.comment_stream(r, 'all', limit=None)
-        logging.info('Bot will be scanning all of reddit.')
-    
     # Define the regex
     regex_old = re.compile('\[(.*\n*)\]\(\/latex\)')
     regex = re.compile(r'\\begin{latex}(.*\n*)\\end{latex}', re.S)
     
     already_done = set()
-    # Start the main loop
+    
     while True:
         try:
+            # Generate the multireddit
             if str(subreddits[0]) != 'all':
-                subs = r.get_subreddit(multireddit)
-                all_comments = subs.get_comments()
+                multireddit = ('%s') % '+'.join(subreddits)
+                logging.info('Bot will be scanning the multireddit "' + multireddit + '".')
+            else:
+                all_comments = praw.helpers.comment_stream(r, 'all', limit=None)
+                logging.info('Bot will be scanning all of reddit.')
             
-            for comment in all_comments:
-                latex = []
-                latex.extend(regex_old.findall(comment.body))
-                latex.extend(regex.findall(comment.body))
-                if latex != [] and comment.id not in already_done:
-                    logging.info('Found comment with LaTeX')
-                    thread = Thread(target=generate_comment, args=(r, comment, username, already_done, latex, ))
-                    thread.start()
-
+            # Start the main loop
+            
+            while True:
+                if str(subreddits[0]) != 'all':
+                    subs = r.get_subreddit(multireddit)
+                    all_comments = subs.get_comments()
+                
+                for comment in all_comments:
+                    latex = []
+                    latex.extend(regex_old.findall(comment.body))
+                    latex.extend(regex.findall(comment.body))
+                    if latex != [] and comment.id not in already_done:
+                        logging.info('Found comment with LaTeX')
+                        thread = Thread(target=generate_comment, args=(r, comment, username, already_done, latex,))
+                        thread.start()
+    
         except Exception as e:
             logging.error(e)
             continue
@@ -115,7 +118,7 @@ def generate_comment(r, comment, username, already_done, latex):
             comment_reply = comment_reply + '[Automatically Generated Formula](' + final_link + ')\n\n '
             logging.info('Generated image')
         
-        comment_reply = comment_reply + '***\n\n^[About](https://bitbucket.org/JakeLane/reddit-latex-bot/wiki/Home) ^| ^[Source](https://bitbucket.org/JakeLane/reddit-latex-bot/src) ^| ^Created ^and ^maintained ^by ^/u/LeManyman'
+        comment_reply = comment_reply + '***\n\n^[About](https://bitbucket.org/JakeLane/reddit-latex-bot/wiki/Home) ^| ^[Report a Bug](https://bitbucket.org/JakeLane/reddit-latex-bot/issues) ^| ^Created ^and ^maintained ^by ^/u/LeManyman'
         comment.reply(comment_reply)
         already_done.add(comment.id)
         logging.info('Successfully posted image. ')
