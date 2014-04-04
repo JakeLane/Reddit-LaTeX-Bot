@@ -118,7 +118,7 @@ def generate_comment(r, comment, username, already_done, latex):
             comment_reply = comment_reply + '[Automatically Generated Formula](' + final_link + ')\n\n '
             logging.info('Generated image')
         
-        comment_reply = comment_reply + '***\n\n^[About](https://bitbucket.org/JakeLane/reddit-latex-bot/wiki/Home) ^| ^[Report a Bug](https://bitbucket.org/JakeLane/reddit-latex-bot/issues) ^| ^Created ^and ^maintained ^by ^/u/LeManyman'
+        comment_reply = comment_reply + '***\n\n[^About](https://bitbucket.org/JakeLane/reddit-latex-bot/wiki/Home) ^| [^Report ^a ^Bug](https://bitbucket.org/JakeLane/reddit-latex-bot/issues) ^| ^Created ^and ^maintained ^by ^/u/LeManyman'
         comment.reply(comment_reply)
         already_done.add(comment.id)
         logging.info('Successfully posted image. ')
