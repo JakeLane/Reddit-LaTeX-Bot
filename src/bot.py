@@ -94,9 +94,12 @@ def main():
                     latex.extend(regex_old.findall(comment.body))
                     latex.extend(regex.findall(comment.body))
                     if latex != [] and comment.id not in already_done:
-                        logging.info('Found comment with LaTeX')
-                        thread = Thread(target=generate_comment, args=(r, comment, username, already_done, latex,))
-                        thread.start()
+                        try:
+                            logging.info('Found comment with LaTeX')
+                            thread = Thread(target=generate_comment, args=(r, comment, username, already_done, latex,))
+                            thread.start()
+                        except HTTPError as e:
+                            logging.info('HTTPError: Most likely banned')
     
         except Exception as e:
             logging.error(e)
