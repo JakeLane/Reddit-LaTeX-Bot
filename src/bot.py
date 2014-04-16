@@ -60,7 +60,7 @@ def main():
     banned_subs = []
     
     # Login to Reddit
-    r = praw.Reddit('LaTeX Bot by u/JakeLane'
+    r = praw.Reddit('LaTeX Bot by /u/LeManyman'
                     'Url: https://bitbucket.org/JakeLane/reddit-latex-bot')
     r.config.decode_html_entities = True
     r.login(username, password)
@@ -68,7 +68,7 @@ def main():
     
     # Define the regex
     regex_old = re.compile('\[(.*\n*)\]\(\/latex\)')
-    regex = re.compile(r'\\begin{latex}(.*\n*)\\end{latex}', re.S)
+    regex = re.compile(r'\\begin{latex}(.*?\n*?)\\end{latex}', re.S)
     
     already_done = set()
     
@@ -83,7 +83,6 @@ def main():
                 logging.info('Bot will be scanning all of reddit.')
             
             # Start the main loop
-            
             while True:
                 if str(subreddits[0]) != 'all':
                     subs = r.get_subreddit(multireddit)
@@ -96,7 +95,7 @@ def main():
                     if latex != [] and comment.id not in already_done:
                         try:
                             logging.info('Found comment with LaTeX')
-                            thread = Thread(target=generate_comment, args=(r, comment, username, already_done, latex,))
+                            thread = Thread(target=generate_comment, args=(r, comment, username, already_done, latex))
                             thread.start()
                         except HTTPError as e:
                             logging.info('HTTPError: Most likely banned')
@@ -120,11 +119,21 @@ def generate_comment(r, comment, username, already_done, latex):
             final_link = uploaded_image.link
             comment_reply = comment_reply + '[Automatically Generated Formula](' + final_link + ')\n\n '
             logging.info('Generated image')
+            logging.info(formula)
         
         comment_reply = comment_reply + '***\n\n[^About](https://bitbucket.org/JakeLane/reddit-latex-bot/wiki/Home) ^| [^Report ^a ^Bug](https://bitbucket.org/JakeLane/reddit-latex-bot/issues) ^| ^Created ^and ^maintained ^by ^/u/LeManyman'
         comment.reply(comment_reply)
         already_done.add(comment.id)
         logging.info('Successfully posted image. ')
+
+def imgur_upload(formula_url):
+    im = pyimgur.Imgur(Imgur_CLIENT_ID, Imgur_CLIENT_SECRET)
+    return im.upload_image(url=formula_url)
+
+def formula_as_url(formula):
+    encoded = urllib.quote('%s' % formula)
+    joined_url = 'http://latex.codecogs.com/png.latex?' + encoded
+    return joined_url
 
 def initialize_logger(output_dir):
     if not os.path.exists(output_dir):
@@ -156,15 +165,6 @@ def initialize_logger(output_dir):
     formatter = logging.Formatter("[%(levelname)s] %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-
-def imgur_upload(formula_url):
-    im = pyimgur.Imgur(Imgur_CLIENT_ID, Imgur_CLIENT_SECRET)
-    return im.upload_image(url=formula_url)
-
-def formula_as_url(formula):
-    encoded = urllib.quote('%s' % formula)
-    joined_url = 'http://latex.codecogs.com/png.latex?' + encoded
-    return joined_url
 
 if __name__ == '__main__':
     main()
