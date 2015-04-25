@@ -34,14 +34,13 @@ def main():
     already_done = set() # Intialise a list of comments already done (to stop any duplicates if the Reddit API messes up)
     
     while True:
-        for comment in praw.helpers.comment_stream(r, 'all', limit=None): # For every new comment
+        for comment in praw.helpers.comment_stream(r, 'all'): # For every new comment
             latex = []
             latex.extend(regex.findall(comment.body)) # For each formula found, add to the list
             if latex != [] and comment.id not in already_done: # If there is a formula and it is not already done
                 try:
                     print('Found comment with LaTeX')
-                    thread = Thread(target=generate_comment, args=(r, comment, username, already_done, latex))
-                    thread.start() # Make a new thread to parse the comment
+                    generate_comment(r, comment, username, already_done, latex)
                 except Exception as e:
                     print("The show must go on: " + e)
                     continue
