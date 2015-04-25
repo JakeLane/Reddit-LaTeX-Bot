@@ -42,7 +42,7 @@ def main():
                     print('Found comment with LaTeX')
                     generate_comment(r, comment, username, already_done, latex)
                 except Exception as e:
-                    print("The show must go on: " + e)
+                    print("The show must go on: " + str(e))
                     continue
 
 def formula_as_url(formula):
