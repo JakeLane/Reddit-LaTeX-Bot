@@ -4,16 +4,16 @@ Please report any issues [here](https://bitbucket.org/JakeLane/reddit-latex-bot/
 
 You can use this bot with the syntax:
 ```
-\begin{latex}
+\begin{tex}
 Your LaTeX code here
-\end{latex}
+\end{tex}
 ```
 
 For example, the comment:
 ```
-\begin{latex}
+\begin{tex}
 x^2 + y^2
-\end{latex}
+\end{tex}
 ```
 will render cause the bot to reply with:
 
